@@ -49,17 +49,17 @@ public final class EchoServer {
         }
 
         // Configure the server.
-        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        EventLoopGroup bossGroup = new NioEventLoopGroup(1);//主reactor，负责将接受到的acceptor封装channel提交给worker的reactor执行
+        EventLoopGroup workerGroup = new NioEventLoopGroup();//从reactor，负责封装处理handler
         try {
-            ServerBootstrap b = new ServerBootstrap();
-            b.group(bossGroup, workerGroup)
-             .channel(NioServerSocketChannel.class)
+            ServerBootstrap b = new ServerBootstrap();//启动端
+            b.group(bossGroup, workerGroup)//设置reactor
+             .channel(NioServerSocketChannel.class)//设置channel类型
              .option(ChannelOption.SO_BACKLOG, 100)
-             .handler(new LoggingHandler(LogLevel.INFO))
+             .handler(new LoggingHandler(LogLevel.INFO))//设置日志级别
              .childHandler(new ChannelInitializer<SocketChannel>() {
                  @Override
-                 public void initChannel(SocketChannel ch) throws Exception {
+                 public void initChannel(SocketChannel ch) throws Exception {//一条心的channel连接进来如何处理的handler添加
                      ChannelPipeline p = ch.pipeline();
                      if (sslCtx != null) {
                          p.addLast(sslCtx.newHandler(ch.alloc()));
@@ -70,12 +70,14 @@ public final class EchoServer {
              });
 
             // Start the server.
-            ChannelFuture f = b.bind(PORT).sync();
-
+            ChannelFuture f = b.bind(PORT).sync();//同步处理，启动serviceNetty的入口
+            System.out.println("处理完成，netty服务端启动");
             // Wait until the server socket is closed.
             f.channel().closeFuture().sync();
+            System.out.println("等待结束");
         } finally {
             // Shut down all event loops to terminate all threads.
+            System.out.println("结束");
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
         }

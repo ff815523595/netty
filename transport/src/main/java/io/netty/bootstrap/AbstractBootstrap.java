@@ -261,16 +261,16 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
      * Create a new {@link Channel} and bind it.
      */
     public ChannelFuture bind(SocketAddress localAddress) {
-        validate();
+        validate();//验证参数
         if (localAddress == null) {
             throw new NullPointerException("localAddress");
         }
-        return doBind(localAddress);
+        return doBind(localAddress);//进行绑定
     }
 
     private ChannelFuture doBind(final SocketAddress localAddress) {
-        final ChannelFuture regFuture = initAndRegister();
-        final Channel channel = regFuture.channel();
+        final ChannelFuture regFuture = initAndRegister();//初始化channel并注册
+        final Channel channel = regFuture.channel();//得到实例化的channel对象
         if (regFuture.cause() != null) {
             return regFuture;
         }
@@ -307,8 +307,8 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
     final ChannelFuture initAndRegister() {
         Channel channel = null;
         try {
-            channel = channelFactory().newChannel();
-            init(channel);
+            channel = channelFactory().newChannel();//通过反射获取！，channel是ServerBootstrap.channel（class）注册进来的
+            init(channel);//初始化channel为其设置相关参数、然后在channel的pipeline中加入新的调用链，对象重写initChannel方法，并加入ServerBootstrapAcceptor
         } catch (Throwable t) {
             if (channel != null) {
                 // channel can be null if newChannel crashed (eg SocketException("too many open files"))

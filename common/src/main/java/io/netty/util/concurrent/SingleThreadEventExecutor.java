@@ -731,11 +731,11 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
             throw new NullPointerException("task");
         }
 
-        boolean inEventLoop = inEventLoop();
-        if (inEventLoop) {
+        boolean inEventLoop = inEventLoop();//当前线程和公共变量中的线程比较
+        if (inEventLoop) {//当前线程已启动的话直接添加task
             addTask(task);
         } else {
-            startThread();
+            startThread();//启动线程
             addTask(task);
             if (isShutdown() && removeTask(task)) {
                 reject();

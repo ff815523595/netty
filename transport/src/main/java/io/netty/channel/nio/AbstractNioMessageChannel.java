@@ -43,7 +43,7 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
     @Override
     protected AbstractNioUnsafe newUnsafe() {
         return new NioMessageUnsafe();
-    }
+    }//实现AbstractChannel中的newUnsafe()方法，用来防止一个NioMessageUnsafe对象，在AbstractChannel中将new的对象放置为成员变量
 
     private final class NioMessageUnsafe extends AbstractNioUnsafe {
 

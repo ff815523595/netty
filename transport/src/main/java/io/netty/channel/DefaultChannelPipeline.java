@@ -86,8 +86,8 @@ public class DefaultChannelPipeline implements ChannelPipeline {
     protected DefaultChannelPipeline(Channel channel) {
         this.channel = ObjectUtil.checkNotNull(channel, "channel");
 
-        tail = new TailContext(this);
-        head = new HeadContext(this);
+        tail = new TailContext(this);//调用链尾部
+        head = new HeadContext(this);//调用链头部
 
         head.next = tail;
         tail.prev = head;
@@ -193,11 +193,11 @@ public class DefaultChannelPipeline implements ChannelPipeline {
     public final ChannelPipeline addLast(EventExecutorGroup group, String name, ChannelHandler handler) {
         final AbstractChannelHandlerContext newCtx;
         synchronized (this) {
-            checkMultiplicity(handler);
+            checkMultiplicity(handler);//判断handler是否已经被加入到链表中，可用@Sharable标签标示handler是可重复用的（这样可以不用每次都new一个）！
 
-            newCtx = newContext(group, filterName(name, handler), handler);
+            newCtx = newContext(group, filterName(name, handler), handler);//创建ctx节点
 
-            addLast0(newCtx);
+            addLast0(newCtx);//加入到链表尾部，tail节点的头部
 
             // If the registered is false it means that the channel was not registered on an eventloop yet.
             // In this case we add the context to the pipeline and add a task that will call
