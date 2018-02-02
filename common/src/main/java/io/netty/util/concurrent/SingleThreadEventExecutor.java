@@ -803,7 +803,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
     private void startThread() {
         if (state == ST_NOT_STARTED) {
             if (STATE_UPDATER.compareAndSet(this, ST_NOT_STARTED, ST_STARTED)) {
-                thread.start();
+                thread.start();//thread在创建的时候就已经指定了为其实现类，demo中指向NioEventLoop对象===》执行的其实就是updateLastExecutionTime() + SingleThreadEventExecutor.this.run();
             }
         }
     }

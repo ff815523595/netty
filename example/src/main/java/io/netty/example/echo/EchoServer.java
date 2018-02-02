@@ -49,8 +49,8 @@ public final class EchoServer {
         }
 
         // Configure the server.
-        EventLoopGroup bossGroup = new NioEventLoopGroup(1);//主reactor，负责将接受到的acceptor封装channel提交给worker的reactor执行
-        EventLoopGroup workerGroup = new NioEventLoopGroup();//从reactor，负责封装处理handler
+        EventLoopGroup bossGroup = new NioEventLoopGroup(1);//主reactor，负责将接受到的acceptor封装channel提交给worker的reactor执行,内部创建EventLoop并放到child数组中
+        EventLoopGroup workerGroup = new NioEventLoopGroup();//从reactor，负责封装处理handler,内部创建EventLoop并放到child数组中
         try {
             ServerBootstrap b = new ServerBootstrap();//启动端
             b.group(bossGroup, workerGroup)//设置reactor

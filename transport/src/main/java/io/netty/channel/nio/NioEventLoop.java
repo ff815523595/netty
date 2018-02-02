@@ -168,6 +168,10 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         }
     }
 
+    /**
+     * 获取得到selector
+     * @return
+     */
     private SelectorTuple openSelector() {
         final Selector unwrappedSelector;
         try {
@@ -248,12 +252,18 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     }
 
     /**
+     * 返回selector的提供方，由此可以获取相应的selector
      * Returns the {@link SelectorProvider} used by this {@link NioEventLoop} to obtain the {@link Selector}.
      */
     public SelectorProvider selectorProvider() {
         return provider;
     }
 
+    /**
+     * 创建新的任务队列
+     * @param maxPendingTasks
+     * @return
+     */
     @Override
     protected Queue<Runnable> newTaskQueue(int maxPendingTasks) {
         // This event loop never calls takeTask()
@@ -261,6 +271,10 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                                                     : PlatformDependent.<Runnable>newMpscQueue(maxPendingTasks);
     }
 
+    /**
+     * 添加task任务
+     * @return
+     */
     @Override
     public int pendingTasks() {
         // As we use a MpscQueue we need to ensure pendingTasks() is only executed from within the EventLoop as
@@ -274,6 +288,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     }
 
     /**
+     * 用于注册channel到selector
      * Registers an arbitrary {@link SelectableChannel}, not necessarily created by Netty, to the {@link Selector}
      * of this event loop.  Once the specified {@link SelectableChannel} is registered, the specified {@code task} will
      * be executed by this event loop when the {@link SelectableChannel} is ready.
@@ -323,6 +338,8 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     }
 
     /**
+     * 当selector响应时长小于timeoutMillis的次数多于指定次数的时候则判断selector为空轮询次数过多，
+     * 由改方法创建一个新的selector防止selector空轮询导致CPU 100%的BUG
      * Replaces the current {@link Selector} of this event loop with newly created {@link Selector}s to work
      * around the infamous epoll 100% CPU bug.
      */
@@ -399,6 +416,9 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         logger.info("Migrated " + nChannels + " channel(s) to the new Selector.");
     }
 
+    /**
+     * NioEventLoop执行的线程方法
+     */
     @Override
     protected void run() {
         for (;;) {
@@ -407,7 +427,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                     case SelectStrategy.CONTINUE:
                         continue;
                     case SelectStrategy.SELECT:
-                        select(wakenUp.getAndSet(false));
+                        select(wakenUp.getAndSet(false));//轮询注册到reactor线程对应的selector上的所有的channel的IO事件
 
                         // 'wakenUp.compareAndSet(false, true)' is always evaluated
                         // before calling 'selector.wakeup()' to reduce the wake-up
@@ -449,10 +469,10 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                 final int ioRatio = this.ioRatio;
                 if (ioRatio == 100) {
                     try {
-                        processSelectedKeys();
+                        processSelectedKeys();//处理产生网络IO事件的channel
                     } finally {
                         // Ensure we always run tasks.
-                        runAllTasks();
+                        runAllTasks();//执行所有的task
                     }
                 } else {
                     final long ioStartTime = System.nanoTime();
@@ -481,6 +501,10 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         }
     }
 
+    /**
+     * 当有异常时候sleep1秒
+     * @param t
+     */
     private static void handleLoopException(Throwable t) {
         logger.warn("Unexpected exception in the selector loop.", t);
 
@@ -501,6 +525,9 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         }
     }
 
+    /**
+     * 关闭selector
+     */
     @Override
     protected void cleanup() {
         try {
@@ -519,6 +546,10 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         }
     }
 
+    /**
+     * 调出task
+     * @return
+     */
     @Override
     protected Runnable pollTask() {
         Runnable task = super.pollTask();
@@ -574,11 +605,11 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             // null out entry in the array to allow to have it GC'ed once the Channel close
             // See https://github.com/netty/netty/issues/2363
             selectedKeys.keys[i] = null;
-
+            // 1.取出IO事件以及对应的附加对象
             final Object a = k.attachment();
-
-            if (a instanceof AbstractNioChannel) {
-                processSelectedKey(k, (AbstractNioChannel) a);
+            //2、处理channel
+            if (a instanceof AbstractNioChannel) {//todo 为啥会是一个抽象类？
+                processSelectedKey(k, (AbstractNioChannel) a);//将channel进行相应处理
             } else {
                 @SuppressWarnings("unchecked")
                 NioTask<SelectableChannel> task = (NioTask<SelectableChannel>) a;
@@ -729,9 +760,10 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         Selector selector = this.selector;
         try {
             int selectCnt = 0;
-            long currentTimeNanos = System.nanoTime();
-            long selectDeadLineNanos = currentTimeNanos + delayNanos(currentTimeNanos);
+            long currentTimeNanos = System.nanoTime();//获取当前时间
+            long selectDeadLineNanos = currentTimeNanos + delayNanos(currentTimeNanos);//todo delayNanos()取出第一个定时任务的延迟时间....PS：延时任务是干什么的待看。。
             for (;;) {
+                // 1.定时任务截至事时间快到了，中断本次轮询
                 long timeoutMillis = (selectDeadLineNanos - currentTimeNanos + 500000L) / 1000000L;
                 if (timeoutMillis <= 0) {
                     if (selectCnt == 0) {
@@ -745,16 +777,17 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                 // Selector#wakeup. So we need to check task queue again before executing select operation.
                 // If we don't, the task might be pended until select operation was timed out.
                 // It might be pended until idle timeout if IdleStateHandler existed in pipeline.
+                // 2.轮询过程中发现有任务加入，中断本次轮询
                 if (hasTasks() && wakenUp.compareAndSet(false, true)) {
                     selector.selectNow();
                     selectCnt = 1;
                     break;
                 }
-
+                // 3.阻塞式select操作
                 int selectedKeys = selector.select(timeoutMillis);
                 selectCnt ++;
 
-                if (selectedKeys != 0 || oldWakenUp || wakenUp.get() || hasTasks() || hasScheduledTasks()) {
+                if (selectedKeys != 0 || oldWakenUp || wakenUp.get() || hasTasks() || hasScheduledTasks()) {//轮询到IO事件 || oldWakenUp=true（即被通知唤醒）||用户主动唤醒||有task任务加入||第一个定时任务即将要被执行
                     // - Selected something,
                     // - waken up by user, or
                     // - the task queue has a pending task.
@@ -777,11 +810,11 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                 }
 
                 long time = System.nanoTime();
-                if (time - TimeUnit.MILLISECONDS.toNanos(timeoutMillis) >= currentTimeNanos) {
+                if (time - TimeUnit.MILLISECONDS.toNanos(timeoutMillis) >= currentTimeNanos) {//持续时间大于timeoutMillis说明是一次有效的轮询
                     // timeoutMillis elapsed without anything selected.
                     selectCnt = 1;
                 } else if (SELECTOR_AUTO_REBUILD_THRESHOLD > 0 &&
-                        selectCnt >= SELECTOR_AUTO_REBUILD_THRESHOLD) {
+                        selectCnt >= SELECTOR_AUTO_REBUILD_THRESHOLD) {//持续时间小于timeoutMillis则为selector空轮询&&轮询次数大于512的时候关闭原有selector并创建新的selector
                     // The selector returned prematurely many times in a row.
                     // Rebuild the selector to work around the problem.
                     logger.warn(
