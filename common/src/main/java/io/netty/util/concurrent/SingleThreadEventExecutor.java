@@ -730,7 +730,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         if (task == null) {
             throw new NullPointerException("task");
         }
-
+        System.out.println("执行了loop中的task："+task.toString());
         boolean inEventLoop = inEventLoop();//当前线程和公共变量中的线程比较
         if (inEventLoop) {//当前线程已启动的话直接添加task
             addTask(task);

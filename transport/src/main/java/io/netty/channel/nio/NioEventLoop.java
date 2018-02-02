@@ -417,7 +417,10 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     }
 
     /**
-     * NioEventLoop执行的线程方法
+     * NioEventLoop执行的线程方法，主要步骤为：
+     * 1、轮询注册到reactor线程对应的selector上的所有的channel的IO事件
+     * 2、处理selector中的channel
+     * 3、执行所有被加入到队列的task
      */
     @Override
     protected void run() {
