@@ -132,7 +132,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
                         readPendingReset = true;
                         setReadPending(false);
                     }
-                    pipeline.fireChannelRead(byteBuf);
+                    pipeline.fireChannelRead(byteBuf);//从head传播至整个pipeline
                     byteBuf = null;
 
                     if (totalReadAmount >= Integer.MAX_VALUE - localReadAmount) {

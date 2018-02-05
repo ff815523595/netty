@@ -469,7 +469,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
                 cancelledKeys = 0;
                 needsToSelectAgain = false;
-                final int ioRatio = this.ioRatio;
+                final int ioRatio = this.ioRatio;//到底是干嘛的？
                 if (ioRatio == 100) {
                     try {
                         processSelectedKeys();//处理产生网络IO事件的channel
